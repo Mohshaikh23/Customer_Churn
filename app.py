@@ -1,98 +1,125 @@
-import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split
+from sklearn.ensemble import RandomForestClassifier 
+from sklearn import metrics
+from flask import Flask, request, render_template
+import pickle
 
-from sklearn.compose import ColumnTransformer
-from sklearn.preprocessing import OneHotEncoder, LabelEncoder, StandardScaler
-from sklearn.pipeline import Pipeline, make_pipeline
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.linear_model import LogisticRegression
+app = Flask("__name__")
 
-import warnings
-warnings.filterwarnings("ignore", category=DeprecationWarning)
+df_1=pd.read_csv("dataset.csv")
 
-df = pd.read_csv('dataset.csv')
-def categorical_column_fetch(df):
-    categorical_columns = []
-    for i in df.columns:
-        if df[i].dtype == 'object':
-            categorical_columns.append(i)
-            continue
-        else:
-            pass
-    return categorical_columns
+q = ""
 
-categorical_columns = categorical_column_fetch(df)
+@app.route("/")
+def loadPage():
+	return render_template('home.html', query="")
 
-df = df.apply(lambda x: x.str.strip() if x.dtype == 'object' else x)  
-# Strip whitespace from object columns
+@app.route("/", methods=['POST'])
+def predict():
+    
+    '''
+    SeniorCitizen
+    MonthlyCharges
+    TotalCharges
+    gender
+    Partner
+    Dependents
+    PhoneService
+    MultipleLines
+    InternetService
+    OnlineSecurity
+    OnlineBackup
+    DeviceProtection
+    TechSupport
+    StreamingTV
+    StreamingMovies
+    Contract
+    PaperlessBilling
+    PaymentMethod
+    tenure
+    '''
+    inputQuery1 = request.form['query1']
+    inputQuery2 = request.form['query2']
+    inputQuery3 = request.form['query3']
+    inputQuery4 = request.form['query4']
+    inputQuery5 = request.form['query5']
+    inputQuery6 = request.form['query6']
+    inputQuery7 = request.form['query7']
+    inputQuery8 = request.form['query8']
+    inputQuery9 = request.form['query9']
+    inputQuery10 = request.form['query10']
+    inputQuery11 = request.form['query11']
+    inputQuery12 = request.form['query12']
+    inputQuery13 = request.form['query13']
+    inputQuery14 = request.form['query14']
+    inputQuery15 = request.form['query15']
+    inputQuery16 = request.form['query16']
+    inputQuery17 = request.form['query17']
+    inputQuery18 = request.form['query18']
+    inputQuery19 = request.form['query19']
 
-df.replace('', np.nan, inplace=True)  
-# Replace empty strings with NaN
-
-df.dropna(inplace=True)  
-# Drop rows with NaN values
-
-df.drop('customerID', axis=1, inplace=True)  
-# Drop the 'customerID' column
-
-df['TotalCharges'] = df['TotalCharges'].astype(float)  
-# Convert 'TotalCharges' column to float
-
-# Sample equal number of 'No' instances as 'Yes' instances
-yes_data = df[df['Churn'] == 'Yes']
-no_data = df[df['Churn'] == 'No'].sample(n=len(yes_data), random_state=24)
-df = pd.concat([yes_data, no_data], ignore_index=True)
-
-df = df.sample(frac=1, random_state=24).reset_index(drop=True)  # Shuffle the dataframe
-
-new_df = df.copy()
-
-X= df.iloc[:, :-1]
-
-y=df.iloc[:, -1]
-
-le = LabelEncoder()
-y = le.fit_transform(y)
-
-cat_columns = [i for i in X.columns if df[i].dtype == 'object']
-numerical_columns = ['Churn']
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 4)
-
-
-target_transformer = Pipeline([('label_encoder',LabelEncoder())])
-
-categorical_transformer = Pipeline([('one_hot_encoder',OneHotEncoder(drop='first',
-                                                                     handle_unknown='ignore'))
-                                    ])
-
-# Create the ColumnTransformer to apply different transformers to different columns
-preprocessor = ColumnTransformer([('categorical',categorical_transformer,cat_columns)],
-                                                remainder='passthrough')
-
-# Create the final pipeline
-pipeline = Pipeline([('preprocessor', preprocessor),
-                     ('Standard Scalar', StandardScaler()),
-                     ('clf', LogisticRegression())
-])
-
-# Fit the pipeline on the training data
-pipeline.fit(X_train, y_train)
-
-y_pred = pipeline.predict(X_test)
-
-from sklearn.metrics import classification_report
-
-report = classification_report(y_test, y_pred)
-
-# Print the classification report
-# print(report)
-
-cv_scores = cross_val_score(pipeline, X, y, cv=5, scoring='accuracy')
-
-# Print the cross-validation scores
-print("Cross-Validation Scores:", cv_scores)
-print("Mean CV Score:", cv_scores.mean())
-print("Standard Deviation:", cv_scores.std())
-
+    model = pickle.load(open("model.sav", "rb"))
+    
+    data = [[inputQuery1, inputQuery2, inputQuery3, inputQuery4, inputQuery5, inputQuery6, inputQuery7, 
+             inputQuery8, inputQuery9, inputQuery10, inputQuery11, inputQuery12, inputQuery13, inputQuery14,
+             inputQuery15, inputQuery16, inputQuery17, inputQuery18, inputQuery19]]
+    
+    new_df = pd.DataFrame(data, columns = ['SeniorCitizen', 'MonthlyCharges', 'TotalCharges', 'gender', 
+                                           'Partner', 'Dependents', 'PhoneService', 'MultipleLines', 'InternetService',
+                                           'OnlineSecurity', 'OnlineBackup', 'DeviceProtection', 'TechSupport',
+                                           'StreamingTV', 'StreamingMovies', 'Contract', 'PaperlessBilling',
+                                           'PaymentMethod', 'tenure'])
+    
+    df_2 = pd.concat([df_1, new_df], ignore_index = True) 
+    # Group the tenure in bins of 12 months
+    labels = ["{0} - {1}".format(i, i + 11) for i in range(1, 72, 12)]
+    
+    df_2['tenure_group'] = pd.cut(df_2.tenure.astype(int), range(1, 80, 12), right=False, labels=labels)
+    #drop column customerID and tenure
+    df_2.drop(columns= ['tenure'], axis=1, inplace=True)   
+    
+    
+    
+    
+    new_df__dummies = pd.get_dummies(df_2[['gender', 'SeniorCitizen', 'Partner', 'Dependents', 'PhoneService',
+           'MultipleLines', 'InternetService', 'OnlineSecurity', 'OnlineBackup',
+           'DeviceProtection', 'TechSupport', 'StreamingTV', 'StreamingMovies',
+           'Contract', 'PaperlessBilling', 'PaymentMethod','tenure_group']])
+    
+    
+    #final_df=pd.concat([new_df__dummies, new_dummy], axis=1)
+        
+    
+    single = model.predict(new_df__dummies.tail(1))
+    probablity = model.predict_proba(new_df__dummies.tail(1))[:,1]
+    
+    if single==1:
+        o1 = "This customer is likely to be churned!!"
+        o2 = "Confidence: {}".format(probablity*100)
+    else:
+        o1 = "This customer is likely to continue!!"
+        o2 = "Confidence: {}".format(probablity*100)
+        
+    return render_template('home.html', output1=o1, output2=o2, 
+                           query1 = request.form['query1'], 
+                           query2 = request.form['query2'],
+                           query3 = request.form['query3'],
+                           query4 = request.form['query4'],
+                           query5 = request.form['query5'], 
+                           query6 = request.form['query6'], 
+                           query7 = request.form['query7'], 
+                           query8 = request.form['query8'], 
+                           query9 = request.form['query9'], 
+                           query10 = request.form['query10'], 
+                           query11 = request.form['query11'], 
+                           query12 = request.form['query12'], 
+                           query13 = request.form['query13'], 
+                           query14 = request.form['query14'], 
+                           query15 = request.form['query15'], 
+                           query16 = request.form['query16'], 
+                           query17 = request.form['query17'],
+                           query18 = request.form['query18'], 
+                           query19 = request.form['query19'])
+    
+app.run()
