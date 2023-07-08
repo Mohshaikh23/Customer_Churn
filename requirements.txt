@@ -1,6 +1,7 @@
-sklearn
+scikit-learn==1.2.2
 numpy
 pandas
 streamlit
 flask
 imblearn
+pip==23.1.2
